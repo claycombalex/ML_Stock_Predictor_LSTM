@@ -2,6 +2,8 @@ import simfin as sf
 from simfin.names import *
 import matplotlib.pyplot as plt
 import pandas as pd
+import sklearn.preprocessing as sk
+import tensorflow as tf
 
 sf.set_api_key('nmBmGj2WlnAlOBAO6JzosLzzAOgx7aON')
 
@@ -28,20 +30,52 @@ except Exception as e:
 
 # TO-DO add condition for banks and insurance companies because they use different data columns
 
-# Load the datasets to disk
+# Load the relevant parts of the dataset to disk
 # Income, balance, and cashflow are resampled to fill in NaN values
 income_vals = income.loc[ticker, [SHARES_BASIC, REVENUE, GROSS_PROFIT, NET_INCOME]].resample('D').interpolate(method='linear')
 balance_vals = balance.loc[ticker, [CASH_EQUIV_ST_INVEST, ACC_NOTES_RECV, PROP_PLANT_EQUIP_NET, TOTAL_LIAB_EQUITY]].resample('D').interpolate(method='linear')
 cashflow_vals = cashflow.loc[ticker, [NET_CASH_OPS, NET_CASH_INV, NET_CASH_FIN]].resample('D').interpolate(method='linear')
-prices_vals = prices.loc[ticker, [SHARE_PRICE_CLOSE, SHARE_VOLUME]]
+prices_vals = prices.loc[ticker, [SHARE_VOLUME, SHARE_PRICE_CLOSE]]
 
-# Merge datasets with key "Report Date"
+# Merge datasets with date as the key
 merged_reports = pd.DataFrame.merge(income_vals, balance_vals, how='outer', on='Report Date')
 merged_reports = pd.DataFrame.merge(merged_reports, cashflow_vals, how='outer', on='Report Date')
-merged_reports.index.name = 'Date'  # Share Price dataset has column title "Date" instead of "Report Date"
+merged_reports.index.name = 'Date'
 merged_reports = pd.DataFrame.merge(merged_reports, prices_vals, how='outer', on='Date')
 
 # Drop entries of the table that have NaN values
 merged_reports = merged_reports.dropna()
 
-print(merged_reports.to_string())
+# Encode integers
+values = merged_reports.values
+encoder = sk.LabelEncoder()
+values[:,4] = encoder.fit_transform(values[:,4])
+values = values.astype('float32')
+
+# Normalize data
+scaler = sk.MinMaxScaler(feature_range=(0, 1))
+scaled_values = scaler.fit_transform(values)
+
+# Convert the scaled values into a supervised learning set
+n_vars = 13
+supervised_data = pd.DataFrame(scaled_values)
+names = list()
+names += [('var%d(t)' % (j+1)) for j in range(n_vars)]
+supervised_data.columns = names
+
+# Split the data into train and test sets
+# Train on the first 1000 days, test on the last 196 days
+values = supervised_data.values
+train = values[:1000, :]
+test = values[1000:, :]
+
+# Split into inputs and outputs
+train_X, train_Y = train[:, :-1], train[:, -1]
+test_X, test_Y = test[:, :-1], test[:, -1]
+
+# Reshape input to be 3D
+train_X = train_X.reshape((train_X.shape[0], 1, train_X.shape[1]))
+test_X = test_X.reshape((test_X.shape[0], 1, test_X.shape[1]))
+
+print(supervised_data)
+print(train_X.shape, train_Y.shape, test_X.shape, test_Y.shape)
