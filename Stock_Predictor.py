@@ -1,9 +1,13 @@
+from math import sqrt
 import simfin as sf
 from simfin.names import *
 import matplotlib.pyplot as plt
 import pandas as pd
 import sklearn.preprocessing as sk
+from sklearn.metrics import mean_squared_error
 import tensorflow as tf
+from tensorflow import keras as ks
+from numpy import concatenate
 
 sf.set_api_key('nmBmGj2WlnAlOBAO6JzosLzzAOgx7aON')
 
@@ -77,5 +81,24 @@ test_X, test_Y = test[:, :-1], test[:, -1]
 train_X = train_X.reshape((train_X.shape[0], 1, train_X.shape[1]))
 test_X = test_X.reshape((test_X.shape[0], 1, test_X.shape[1]))
 
-print(supervised_data)
-print(train_X.shape, train_Y.shape, test_X.shape, test_Y.shape)
+# Create network
+model = ks.models.Sequential()
+model.add(ks.layers.LSTM(50, input_shape=(train_X.shape[1], train_X.shape[2])))
+model.add(ks.layers.Dense(1))
+model.compile(loss='mae', optimizer='adam')
+
+# Fit network
+history = model.fit(train_X, train_Y, epochs=50, batch_size=72, validation_data=(test_X, test_Y), verbose=2, shuffle=False)
+
+# Plot the history
+plt.plot(history.history['loss'], label='train')
+plt.plot(history.history['val_loss'], label='test')
+plt.legend()
+plt.show()
+
+# Make stock price predictions
+yhat = model.predict(test_X)
+test_X = test_X.reshape((test_X.shape[0], test_X.shape[2]))
+
+print(test_Y)
+print(yhat)
