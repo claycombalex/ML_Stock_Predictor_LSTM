@@ -50,6 +50,9 @@ merged_reports = pd.DataFrame.merge(merged_reports, prices_vals, how='outer', on
 # Drop entries of the table that have NaN values
 merged_reports = merged_reports.dropna()
 
+# Get maximum stock price
+maxval = max(merged_reports['Close'].tolist())
+
 # Encode integers
 values = merged_reports.values
 encoder = sk.LabelEncoder()
@@ -70,8 +73,8 @@ supervised_data.columns = names
 # Split the data into train and test sets
 # Train on the first 1000 days, test on the last 196 days
 values = supervised_data.values
-train = values[:1000, :]
-test = values[1000:, :]
+train = values[:1100, :]
+test = values[1100:, :]
 
 # Split into inputs and outputs
 train_X, train_Y = train[:, :-1], train[:, -1]
@@ -81,9 +84,9 @@ test_X, test_Y = test[:, :-1], test[:, -1]
 train_X = train_X.reshape((train_X.shape[0], 1, train_X.shape[1]))
 test_X = test_X.reshape((test_X.shape[0], 1, test_X.shape[1]))
 
-# Create network
+# Create network 
 model = ks.models.Sequential()
-model.add(ks.layers.LSTM(50, input_shape=(train_X.shape[1], train_X.shape[2])))
+model.add(ks.layers.LSTM(75, input_shape=(train_X.shape[1], train_X.shape[2])))
 model.add(ks.layers.Dense(1))
 model.compile(loss='mae', optimizer='adam')
 
@@ -100,5 +103,8 @@ plt.show()
 yhat = model.predict(test_X)
 test_X = test_X.reshape((test_X.shape[0], test_X.shape[2]))
 
-print(test_Y)
-print(yhat)
+# Calculate RMSE
+rmse = sqrt(mean_squared_error(test_Y, yhat))
+print(rmse)
+print(test_Y * maxval)
+print(yhat * maxval)
