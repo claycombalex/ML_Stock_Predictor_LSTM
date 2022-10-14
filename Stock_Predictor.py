@@ -25,7 +25,7 @@ prices = sf.load_shareprices(market='us', variant = 'daily')
 ticker = input("Enter stock ticker to predict value: ")
 ticker.upper()
 
-# Check if the ticker is part of the SimFin database, if not exit program
+# Check if the ticker is part of the SimFin database, if not exit programcaasdfasd
 try:
     companies.loc[ticker]
 except Exception as e:
